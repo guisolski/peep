@@ -22,13 +22,25 @@ Built with [Bubble Tea](https://github.com/charmbracelet/bubbletea) and
 Requires Go 1.26+.
 
 ```sh
-git clone git@github.com:guisolski/peep.git
-cd peep
-make install   # builds and installs to /usr/local/bin (override with PREFIX=...)
+go install github.com/guisolski/peep@latest   # installs to $(go env GOPATH)/bin
 ```
 
-If `/usr/local/bin` isn't writable by your user, run `sudo make install` instead.
-To install elsewhere, pass a custom prefix: `make install PREFIX=/custom/path`.
+Or from a clone:
+
+```sh
+git clone git@github.com:guisolski/peep.git
+cd peep
+make install   # builds and installs to $(PREFIX)/bin — default PREFIX=/usr/local
+```
+
+Picking a prefix:
+
+- **Apple Silicon macOS**: `/usr/local/bin` usually doesn't exist, so the default
+  fails with `install: /usr/local/bin/INS@...: No such file or directory`. Install
+  into the Homebrew prefix instead (writable by your user, already on `PATH`):
+  `make install PREFIX=/opt/homebrew`
+- If your chosen prefix isn't writable by your user, run `sudo make install`.
+- Any other location works too: `make install PREFIX=/custom/path`.
 
 Or just build the binary locally:
 
