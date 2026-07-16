@@ -27,6 +27,9 @@ cd peep
 make install   # builds and installs to /usr/local/bin (override with PREFIX=...)
 ```
 
+If `/usr/local/bin` isn't writable by your user, run `sudo make install` instead.
+To install elsewhere, pass a custom prefix: `make install PREFIX=/custom/path`.
+
 Or just build the binary locally:
 
 ```sh
