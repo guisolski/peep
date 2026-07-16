@@ -8,6 +8,7 @@ import (
 
 	atclip "github.com/atotto/clipboard"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/guisolski/peep/ui"
 )
 
@@ -268,6 +269,7 @@ func (a *App) statusBar() string {
 		hints += "  q quit"
 	}
 	bar := strings.Join([]string{source, " ", path, " ", modePart, msg, hints}, "")
+	bar = ansi.Truncate(bar, a.width, "…")
 	return "\n" + ui.StatusBar.Width(a.width).Render(bar)
 }
 
