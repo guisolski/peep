@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/atotto/clipboard"
-	"peep/model"
+	"github.com/guisolski/peep/model"
 )
 
 // CopyValue copies the leaf value (or summary) of n to the system clipboard.

@@ -8,7 +8,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/itchyny/gojq"
-	"peep/ui"
+	"github.com/guisolski/peep/ui"
 )
 
 type FilterModel struct {

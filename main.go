@@ -6,8 +6,8 @@ import (
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"peep/input"
-	"peep/model"
+	"github.com/guisolski/peep/input"
+	"github.com/guisolski/peep/model"
 )
 
 func main() {

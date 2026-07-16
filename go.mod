@@ -1,4 +1,4 @@
-module peep
+module github.com/guisolski/peep
 
 go 1.26.1
 

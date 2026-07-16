@@ -7,7 +7,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
-	"peep/ui"
+	"github.com/guisolski/peep/ui"
 )
 
 // GraphModel implements a Miller-columns layout:

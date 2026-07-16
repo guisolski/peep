@@ -6,7 +6,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"peep/ui"
+	"github.com/guisolski/peep/ui"
 )
 
 type SearchModel struct {

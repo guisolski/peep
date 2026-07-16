@@ -8,7 +8,7 @@ import (
 
 	atclip "github.com/atotto/clipboard"
 	tea "github.com/charmbracelet/bubbletea"
-	"peep/ui"
+	"github.com/guisolski/peep/ui"
 )
 
 type Mode int
@@ -36,6 +36,7 @@ type App struct {
 	data       []byte
 	pendingKey string
 	statusMsg  string
+	embedded   bool
 }
 
 func NewApp(data []byte, source string, width, height int) (*App, error) {
@@ -56,6 +57,18 @@ func NewApp(data []byte, source string, width, height int) (*App, error) {
 		height: height,
 		data:   data,
 	}, nil
+}
+
+// SetEmbedded marks the app as hosted inside another Bubble Tea program:
+// quit keys are ignored and the quit hint is hidden from the status bar.
+func (a *App) SetEmbedded(v bool) {
+	a.embedded = v
+}
+
+// InputActive reports whether a text input (search or filter) is focused,
+// so hosts can avoid stealing printable keys while the user types.
+func (a *App) InputActive() bool {
+	return a.mode == ModeSearch || a.mode == ModeFilter
 }
 
 func (a *App) Init() tea.Cmd {
@@ -90,9 +103,14 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a, nil
 
 	case tea.KeyMsg:
-		// Global quit.
-		if msg.String() == "q" || msg.String() == "ctrl+c" {
-			return a, tea.Quit
+		// Global quit (standalone only): ctrl+c always, q outside text inputs.
+		if !a.embedded {
+			if msg.String() == "ctrl+c" {
+				return a, tea.Quit
+			}
+			if msg.String() == "q" && !a.InputActive() {
+				return a, tea.Quit
+			}
 		}
 
 		// Esc exits search/filter back to tree.
@@ -240,7 +258,10 @@ func (a *App) statusBar() string {
 		msg = "  ✓ " + a.statusMsg
 		a.statusMsg = ""
 	}
-	hints := "  j/k ↑↓  l/→ expand  h/← collapse  g graph  r raw  / search  : filter  q quit"
+	hints := "  j/k ↑↓  l/→ expand  h/← collapse  g graph  r raw  / search  : filter"
+	if !a.embedded {
+		hints += "  q quit"
+	}
 	bar := strings.Join([]string{source, " ", path, " ", modePart, msg, hints}, "")
 	return "\n" + ui.StatusBar.Width(a.width).Render(bar)
 }
