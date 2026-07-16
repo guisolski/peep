@@ -1,4 +1,4 @@
-PREFIX ?= /usr/local
+PREFIX ?= $(shell test -d /usr/local/bin && echo /usr/local || echo /opt/homebrew)
 
 build:
 	go build -o peep .

@@ -30,17 +30,13 @@ Or from a clone:
 ```sh
 git clone git@github.com:guisolski/peep.git
 cd peep
-make install   # builds and installs to $(PREFIX)/bin — default PREFIX=/usr/local
+make install   # builds and installs to $(PREFIX)/bin
 ```
 
-Picking a prefix:
-
-- **Apple Silicon macOS**: `/usr/local/bin` usually doesn't exist, so the default
-  fails with `install: /usr/local/bin/INS@...: No such file or directory`. Install
-  into the Homebrew prefix instead (writable by your user, already on `PATH`):
-  `make install PREFIX=/opt/homebrew`
-- If your chosen prefix isn't writable by your user, run `sudo make install`.
-- Any other location works too: `make install PREFIX=/custom/path`.
+The default prefix is `/usr/local`, falling back to `/opt/homebrew` when
+`/usr/local/bin` doesn't exist (the usual case on Apple Silicon macOS). If the
+chosen prefix isn't writable by your user, run `sudo make install`. Any other
+location works too: `make install PREFIX=/custom/path`.
 
 Or just build the binary locally:
 
