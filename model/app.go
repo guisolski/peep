@@ -243,6 +243,11 @@ func (a *App) View() string {
 	case ModeFilter:
 		content = a.filter.View()
 	}
+	// Pad short content so the status bar stays pinned to the bottom row.
+	lines := strings.Count(content, "\n") + 1
+	if pad := a.height - 1 - lines; pad > 0 {
+		content += strings.Repeat("\n", pad)
+	}
 	return content + a.statusBar()
 }
 
