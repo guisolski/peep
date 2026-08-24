@@ -25,6 +25,7 @@ Built with [Bubble Tea](https://github.com/charmbracelet/bubbletea) and
 
 ```sh
 brew tap guisolski/peep https://github.com/guisolski/peep
+brew trust guisolski/peep   # recent Homebrew versions require trusting non-core taps
 brew install peep
 ```
 
