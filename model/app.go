@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	atclip "github.com/atotto/clipboard"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/guisolski/peep/clipboard"
 	"github.com/guisolski/peep/ui"
 )
 
@@ -95,7 +95,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				a.toggleGraph()
 			case "y":
 				if n := a.tree.CurrentNode(); n != nil {
-					if err := atclip.WriteAll(n.Summary()); err == nil {
+					if err := clipboard.Copy(n.Summary()); err == nil {
 						a.statusMsg = "copied value"
 					}
 				}
@@ -143,7 +143,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				a.pendingKey = ""
 				if n := a.tree.CurrentNode(); n != nil {
 					if b, err := json.MarshalIndent(n.ToInterface(), "", "  "); err == nil {
-						if err2 := atclip.WriteAll(string(b)); err2 == nil {
+						if err2 := clipboard.Copy(string(b)); err2 == nil {
 							a.statusMsg = "copied subtree"
 						}
 					}
@@ -159,8 +159,30 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if a.mode == ModeTree || a.mode == ModeSearch {
 				a.pendingKey = ""
 				if n := a.tree.CurrentNode(); n != nil {
-					if err := atclip.WriteAll(n.Path()); err == nil {
+					if err := clipboard.Copy(n.Path()); err == nil {
 						a.statusMsg = "copied path"
+					}
+				}
+				return a, nil
+			}
+
+		case "S":
+			if a.mode == ModeTree || a.mode == ModeSearch {
+				a.pendingKey = ""
+				if n := a.tree.CurrentNode(); n != nil {
+					if err := clipboard.Copy(n.Schema()); err == nil {
+						a.statusMsg = "copied schema"
+					}
+				}
+				return a, nil
+			}
+
+		case "L":
+			if a.mode == ModeTree || a.mode == ModeSearch {
+				a.pendingKey = ""
+				if n := a.tree.CurrentNode(); n != nil {
+					if err := clipboard.Copy(n.CompactYAML()); err == nil {
+						a.statusMsg = "copied llm format"
 					}
 				}
 				return a, nil
@@ -264,7 +286,7 @@ func (a *App) statusBar() string {
 		msg = "  ✓ " + a.statusMsg
 		a.statusMsg = ""
 	}
-	hints := "  j/k ↑↓  l/→ expand  h/← collapse  g graph  r raw  / search  : filter"
+	hints := "  j/k ↑↓  l/→ expand  h/← collapse  g graph  r raw  / search  : filter  S schema  L llm"
 	if !a.embedded {
 		hints += "  q quit"
 	}

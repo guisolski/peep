@@ -14,10 +14,21 @@ Built with [Bubble Tea](https://github.com/charmbracelet/bubbletea) and
 - **Raw view** — scrollable, pretty-printed JSON
 - **Search** — fuzzy-match keys/values and cycle through matches
 - **Filter** — live `jq` expression evaluation against the loaded document
-- **Clipboard integration** — copy a value, a subtree, or a JSON path with a keystroke
+- **Clipboard integration** — copy a value, a subtree, a JSON path, a schema, or an LLM-friendly export with a keystroke
+- **LLM export** — copy or print a compact schema (types + example values) or a dense YAML-like serialization, sized for pasting into a prompt
+- **Headless mode** — run a `jq` query, a schema dump, or an LLM export from a script, with no TUI
 - **Flexible input** — read from a file argument, piped stdin, the system clipboard, or interactive paste
 
 ## Installation
+
+### Homebrew
+
+```sh
+brew tap guisolski/peep https://github.com/guisolski/peep
+brew install peep
+```
+
+### Go
 
 Requires Go 1.26+.
 
@@ -53,6 +64,19 @@ peep --paste             # read JSON from the system clipboard
 peep                      # no args, no pipe: prompts for interactive paste (Ctrl+D to submit)
 ```
 
+### Headless flags
+
+Skip the TUI entirely and print to stdout — useful in scripts or when piping into another tool (including another `peep`):
+
+```sh
+peep --query '.items[]' file.json   # run a jq expression, print each result
+peep --schema file.json              # print a compact schema (types + example values)
+peep --llm file.json                 # print a dense, YAML-like export sized for an LLM prompt
+peep --version                       # print the version and exit
+```
+
+`--query`, `--schema`, and `--llm` are mutually exclusive. Combine them by piping: `peep --query '.items[]' file.json | peep --schema` gives you the schema of a filtered subset.
+
 ## Keybindings
 
 ### Global
@@ -69,6 +93,8 @@ peep                      # no args, no pipe: prompts for interactive paste (Ctr
 | `:` | Filter (jq) |
 | `y` (double-tap) | Copy current subtree as JSON |
 | `Y` | Copy current node's JSON path |
+| `S` | Copy current subtree's schema (types + example values) |
+| `L` | Copy current subtree as a compact LLM-friendly export |
 | `q` / `ctrl+c` | Quit |
 
 ### Tree view
@@ -96,18 +122,22 @@ Type a `jq` expression and see the result rendered live in the raw view.
 
 ```
 main.go        entry point: flag parsing, input loading, bubbletea startup
+cli.go         headless dispatch for --query/--schema/--llm
 input/         source detection (file / stdin / clipboard / interactive paste)
-model/         application state: App root model, Tree/Graph/Raw/Search/Filter sub-models, JSON node parsing
-clipboard/     clipboard read/write helpers
+model/         application state: App root model, Tree/Graph/Raw/Search/Filter sub-models, JSON node parsing, schema/LLM export, jq evaluation
+clipboard/     clipboard write helper
 ui/            terminal-adaptive lipgloss color styles
 testdata/      sample JSON fixtures used by tests
+Formula/       Homebrew formula, auto-generated/updated by the release workflow — do not edit by hand
 ```
 
 ## Development
 
 ```sh
 make build     # go build -o peep .
-make test      # go test ./...
+make vet       # go vet ./...
+make lint      # golangci-lint run ./...
+make test      # go test ./... -race
 make clean     # remove the built binary
 ```
 

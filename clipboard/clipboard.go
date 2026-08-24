@@ -1,27 +1,12 @@
 package clipboard
 
-import (
-	"encoding/json"
+import "github.com/atotto/clipboard"
 
-	"github.com/atotto/clipboard"
-	"github.com/guisolski/peep/model"
-)
+// WriteFunc performs the actual clipboard write; swappable in tests so
+// they never touch the real OS clipboard.
+var WriteFunc = clipboard.WriteAll
 
-// CopyValue copies the leaf value (or summary) of n to the system clipboard.
-func CopyValue(n *model.Node) error {
-	return clipboard.WriteAll(n.Summary())
-}
-
-// CopyPath copies the JSON path of n (e.g. ".address.city") to the clipboard.
-func CopyPath(n *model.Node) error {
-	return clipboard.WriteAll(n.Path())
-}
-
-// CopySubtree marshals n back to indented JSON and copies it.
-func CopySubtree(n *model.Node) error {
-	b, err := json.MarshalIndent(n.ToInterface(), "", "  ")
-	if err != nil {
-		return err
-	}
-	return clipboard.WriteAll(string(b))
+// Copy writes s to the system clipboard.
+func Copy(s string) error {
+	return WriteFunc(s)
 }

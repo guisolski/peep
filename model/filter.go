@@ -2,12 +2,10 @@ package model
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/itchyny/gojq"
 	"github.com/guisolski/peep/ui"
 )
 
@@ -29,15 +27,13 @@ func NewFilterModel(data []byte, width, height int) *FilterModel {
 	}
 }
 
-// Eval runs a jq expression against the stored JSON and returns marshaled result.
+// Eval runs a jq expression against the stored JSON and returns the first
+// result, marshaled. Used for the live filter preview; see EvalAllJQ for a
+// variant that returns every output a query yields.
 func (m *FilterModel) Eval(expr string) ([]byte, error) {
-	q, err := gojq.Parse(expr)
+	q, v, err := parseJQ(m.data, expr)
 	if err != nil {
-		return nil, fmt.Errorf("parse: %w", err)
-	}
-	var v interface{}
-	if err := json.Unmarshal(m.data, &v); err != nil {
-		return nil, fmt.Errorf("unmarshal: %w", err)
+		return nil, err
 	}
 	iter := q.Run(v)
 	val, ok := iter.Next()
