@@ -1,7 +1,7 @@
 package model
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -12,8 +12,8 @@ type RawModel struct {
 }
 
 func NewRawModel(data []byte, width, height int) *RawModel {
-	pretty, err := json.MarshalIndent(json.RawMessage(data), "", "  ")
-	if err != nil {
+	pretty := jsontext.Value(data).Clone()
+	if err := pretty.Indent(jsontext.WithIndent("  ")); err != nil {
 		pretty = data
 	}
 	vp := viewport.New(width, height-1)
@@ -22,8 +22,8 @@ func NewRawModel(data []byte, width, height int) *RawModel {
 }
 
 func (m *RawModel) SetContent(data []byte) {
-	pretty, err := json.MarshalIndent(json.RawMessage(data), "", "  ")
-	if err != nil {
+	pretty := jsontext.Value(data).Clone()
+	if err := pretty.Indent(jsontext.WithIndent("  ")); err != nil {
 		pretty = data
 	}
 	m.vp.SetContent(string(pretty))

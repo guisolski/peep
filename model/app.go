@@ -1,7 +1,8 @@
 package model
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"strings"
 	"time"
@@ -142,7 +143,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if a.pendingKey == "y" {
 				a.pendingKey = ""
 				if n := a.tree.CurrentNode(); n != nil {
-					if b, err := json.MarshalIndent(n.ToInterface(), "", "  "); err == nil {
+					if b, err := json.Marshal(n.ToInterface(), jsontext.WithIndent("  ")); err == nil {
 						if err2 := clipboard.Copy(string(b)); err2 == nil {
 							a.statusMsg = "copied subtree"
 						}

@@ -31,7 +31,7 @@ brew install peep
 
 ### Go
 
-Requires Go 1.26+.
+Requires Go 1.27+.
 
 ```sh
 go install github.com/guisolski/peep@latest   # installs to $(go env GOPATH)/bin
