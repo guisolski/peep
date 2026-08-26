@@ -1,0 +1,52 @@
+site_name: peep
+site_description: Terminal UI for exploring JSON
+use_directory_urls: false
+
+strict: false
+
+watch:
+  - docs
+  - mkdocs.yml
+
+theme:
+  name: material
+  features:
+    - content.code.annotate
+    - content.code.copy
+    - navigation.sections
+    - navigation.top
+    - navigation.expand
+    - search.highlight
+    - search.suggest
+
+plugins:
+  - search:
+      lang: en
+  - mermaid2:
+      arguments:
+        theme: default
+        themeVariables:
+          primaryColor: "#ede9fe"
+          primaryTextColor: "#1f2937"
+          primaryBorderColor: "#a855f7"
+          lineColor: "#9ca3af"
+          secondaryColor: "#dbeafe"
+          tertiaryColor: "#fef3c7"
+
+markdown_extensions:
+  - admonition
+  - tables
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+nav:
+  - Home: index.md
+  - Project Structure: PROJECT_STRUCTURE.md
+  - Architecture:
+      - Architecture: architecture/architecture.md
+  - Guides:
+      - Adding a View: guides/adding-a-view.md

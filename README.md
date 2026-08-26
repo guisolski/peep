@@ -132,6 +132,8 @@ testdata/      sample JSON fixtures used by tests
 Formula/       Homebrew formula, auto-generated/updated by the release workflow — do not edit by hand
 ```
 
+See [docs/](docs/index.md) for architecture and contributor guides.
+
 ## Development
 
 ```sh

@@ -12,6 +12,9 @@
 # goreleaser build output
 /dist
 
+# mkdocs build output
+/site
+
 # Test binary, built with `go test -c`
 *.test
 
