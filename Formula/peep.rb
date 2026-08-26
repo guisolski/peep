@@ -5,21 +5,21 @@
 class Peep < Formula
   desc "A terminal UI for exploring JSON"
   homepage "https://github.com/guisolski/peep"
-  version "0.2.1"
+  version "0.3.0"
   license "MIT"
 
   on_macos do
     if Hardware::CPU.intel?
-      url "https://github.com/guisolski/peep/releases/download/v0.2.1/peep_0.2.1_darwin_amd64.tar.gz"
-      sha256 "8f68edd98f4afdac55160c5cea763764ec860781e93fc078f8b9e3b6d02cbce5"
+      url "https://github.com/guisolski/peep/releases/download/v0.3.0/peep_0.3.0_darwin_amd64.tar.gz"
+      sha256 "c45cfca2892a186a4166eab6c10284b4f4863da61e3e5ec721094b17f6304a83"
 
       define_method(:install) do
         bin.install "peep"
       end
     end
     if Hardware::CPU.arm?
-      url "https://github.com/guisolski/peep/releases/download/v0.2.1/peep_0.2.1_darwin_arm64.tar.gz"
-      sha256 "1fb77d16ef2dd4582a23e739be25f4fa1285e0cb3c63ebff433a37fe619bcb09"
+      url "https://github.com/guisolski/peep/releases/download/v0.3.0/peep_0.3.0_darwin_arm64.tar.gz"
+      sha256 "68c150745bdb2c48747ce3877351707050ba334284759992d15caa95a68c03e5"
 
       define_method(:install) do
         bin.install "peep"
@@ -29,15 +29,15 @@ class Peep < Formula
 
   on_linux do
     if Hardware::CPU.intel? && Hardware::CPU.is_64_bit?
-      url "https://github.com/guisolski/peep/releases/download/v0.2.1/peep_0.2.1_linux_amd64.tar.gz"
-      sha256 "ea3ff4161e722f3f8b673274c8fdcaa2b72d25f27a23900b2e50805db99a00b8"
+      url "https://github.com/guisolski/peep/releases/download/v0.3.0/peep_0.3.0_linux_amd64.tar.gz"
+      sha256 "53bb1b8771e6eb85b8ab472221935a4ce485d4145b720ef019fbd0a22d4e3fa8"
       define_method(:install) do
         bin.install "peep"
       end
     end
     if Hardware::CPU.arm? && Hardware::CPU.is_64_bit?
-      url "https://github.com/guisolski/peep/releases/download/v0.2.1/peep_0.2.1_linux_arm64.tar.gz"
-      sha256 "29158498029f36fcac65eea338663476326ee8a39e93be9bdea9135a462b77d8"
+      url "https://github.com/guisolski/peep/releases/download/v0.3.0/peep_0.3.0_linux_arm64.tar.gz"
+      sha256 "49bd7fb572a8c606959ff5f9e7242b7d9cf9e285a8e4a7a141f9c5adbd8be73d"
       define_method(:install) do
         bin.install "peep"
       end
