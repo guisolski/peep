@@ -28,10 +28,13 @@ lint: ## Run golangci-lint
 test: ## Run tests with the race detector
 	go test ./... -race
 
+bench: ## Run benchmarks
+	go test ./... -run=^$$ -bench=. -benchmem
+
 docs-serve: ## Serve the docs locally with mkdocs
 	mkdocs serve
 
 clean: ## Remove the built binary
 	rm -f peep
 
-.PHONY: help build install uninstall vet fmt lint test docs-serve clean
+.PHONY: help build install uninstall vet fmt lint test bench docs-serve clean

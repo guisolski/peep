@@ -11,6 +11,7 @@ Built with [Bubble Tea](https://github.com/charmbracelet/bubbletea) and
 
 - **Tree view** — collapsible JSON tree with `├──`/`└──` connector lines
 - **Graph view** — Miller-column (depth-panel) layout for navigating wide/deep structures
+- **Order- and precision-preserving** — object keys keep the source document's original order (never re-sorted), and large integers (e.g. IDs beyond 2^53) keep full precision wherever a value is displayed, copied, or exported
 - **Raw view** — scrollable, pretty-printed JSON
 - **Search** — fuzzy-match keys/values and cycle through matches
 - **Filter** — live `jq` expression evaluation against the loaded document

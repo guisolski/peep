@@ -51,14 +51,37 @@ func NewApp(data []byte, source string, width, height int) (*App, error) {
 		mode:   ModeTree,
 		tree:   tree,
 		graph:  NewGraphModel(root, width, height),
-		raw:    NewRawModel(data, width, height),
-		search: NewSearchModel(tree),
-		filter: NewFilterModel(data, width, height),
 		source: source,
 		width:  width,
 		height: height,
 		data:   data,
 	}, nil
+}
+
+// rawModel, searchModel, and filterModel lazily construct their sub-model
+// on first use — building the full pretty-printed raw view, the searchable
+// flattened tree, or the filter's own raw view up front costs real time on
+// large documents, wasted whenever the user never opens that mode. No
+// sync.Once: Bubble Tea drives Update from a single goroutine.
+func (a *App) rawModel() *RawModel {
+	if a.raw == nil {
+		a.raw = NewRawModel(a.data, a.width, a.height)
+	}
+	return a.raw
+}
+
+func (a *App) searchModel() *SearchModel {
+	if a.search == nil {
+		a.search = NewSearchModel(a.tree)
+	}
+	return a.search
+}
+
+func (a *App) filterModel() *FilterModel {
+	if a.filter == nil {
+		a.filter = NewFilterModel(a.data, a.width, a.height)
+	}
+	return a.filter
 }
 
 // SetEmbedded marks the app as hosted inside another Bubble Tea program:
@@ -83,9 +106,19 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.width, a.height = msg.Width, msg.Height
 		a.tree.Update(msg)
 		a.graph.Update(msg)
-		a.raw.Update(msg)
-		a.search.Update(msg)
-		a.filter.Update(msg)
+		// Nil-guarded, not routed through the lazy accessors: this handler
+		// runs before any key (Bubble Tea sends it on startup), and calling
+		// the accessors here would eagerly build every sub-model on the
+		// first frame, defeating the point of deferring construction.
+		if a.raw != nil {
+			a.raw.Update(msg)
+		}
+		if a.search != nil {
+			a.search.Update(msg)
+		}
+		if a.filter != nil {
+			a.filter.Update(msg)
+		}
 		return a, nil
 
 	case pendingKeyTimeoutMsg:
@@ -143,7 +176,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if a.pendingKey == "y" {
 				a.pendingKey = ""
 				if n := a.tree.CurrentNode(); n != nil {
-					if b, err := json.Marshal(n.ToInterface(), jsontext.WithIndent("  ")); err == nil {
+					if b, err := json.Marshal(n, jsontext.WithIndent("  ")); err == nil {
 						if err2 := clipboard.Copy(string(b)); err2 == nil {
 							a.statusMsg = "copied subtree"
 						}
@@ -194,6 +227,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if a.mode == ModeRaw {
 				a.mode = ModeTree
 			} else {
+				a.rawModel()
 				a.mode = ModeRaw
 			}
 			return a, nil
@@ -201,12 +235,12 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "/":
 			a.pendingKey = ""
 			a.mode = ModeSearch
-			return a, a.search.Init()
+			return a, a.searchModel().Init()
 
 		case ":":
 			a.pendingKey = ""
 			a.mode = ModeFilter
-			return a, a.filter.Init()
+			return a, a.filterModel().Init()
 		}
 
 		// Route remaining keys to the active sub-model.
@@ -221,11 +255,11 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			a.graph = sub.(*GraphModel)
 			return a, cmd
 		case ModeRaw:
-			sub, cmd := a.raw.Update(msg)
+			sub, cmd := a.rawModel().Update(msg)
 			a.raw = sub.(*RawModel)
 			return a, cmd
 		case ModeSearch:
-			sub, cmd := a.search.Update(msg)
+			sub, cmd := a.searchModel().Update(msg)
 			if sm, ok := sub.(*SearchModel); ok {
 				a.search = sm
 			} else {
@@ -233,7 +267,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return a, cmd
 		case ModeFilter:
-			sub, cmd := a.filter.Update(msg)
+			sub, cmd := a.filterModel().Update(msg)
 			if fm, ok := sub.(*FilterModel); ok {
 				a.filter = fm
 			} else {
@@ -261,11 +295,11 @@ func (a *App) View() string {
 	case ModeGraph:
 		content = a.graph.View()
 	case ModeRaw:
-		content = a.raw.View()
+		content = a.rawModel().View()
 	case ModeSearch:
-		content = a.search.View()
+		content = a.searchModel().View()
 	case ModeFilter:
-		content = a.filter.View()
+		content = a.filterModel().View()
 	}
 	// Pad short content so the status bar stays pinned to the bottom row.
 	lines := strings.Count(content, "\n") + 1

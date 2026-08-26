@@ -1,7 +1,6 @@
 package model
 
 import (
-	"encoding/json/v2"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
@@ -10,40 +9,43 @@ import (
 )
 
 type FilterModel struct {
-	raw    *RawModel
-	data   []byte
-	input  textinput.Model
-	errMsg string
+	raw      *RawModel
+	data     []byte
+	parsed   interface{}
+	parseErr error
+	input    textinput.Model
+	errMsg   string
 }
 
 func NewFilterModel(data []byte, width, height int) *FilterModel {
 	ti := textinput.New()
 	ti.Placeholder = "jq filter…"
 	ti.Focus()
+	parsed, parseErr := unmarshalJSON(data)
 	return &FilterModel{
-		raw:   NewRawModel(data, width, height-2),
-		data:  data,
-		input: ti,
+		raw:      NewRawModel(data, width, height-2),
+		data:     data,
+		parsed:   parsed,
+		parseErr: parseErr,
+		input:    ti,
 	}
 }
 
 // Eval runs a jq expression against the stored JSON and returns the first
 // result, marshaled. Used for the live filter preview; see EvalAllJQ for a
-// variant that returns every output a query yields.
+// variant that returns every output a query yields. The document is
+// decoded once (in NewFilterModel), not on every call, so evaluating many
+// expressions against the same document — as happens per keystroke while
+// typing a filter — no longer re-parses it each time.
 func (m *FilterModel) Eval(expr string) ([]byte, error) {
-	q, v, err := parseJQ(m.data, expr)
+	if m.parseErr != nil {
+		return nil, m.parseErr
+	}
+	q, err := compileJQ(expr)
 	if err != nil {
 		return nil, err
 	}
-	iter := q.Run(v)
-	val, ok := iter.Next()
-	if !ok {
-		return []byte("null"), nil
-	}
-	if err, ok := val.(error); ok {
-		return nil, err
-	}
-	return json.Marshal(val)
+	return runJQFirst(q, m.parsed)
 }
 
 func (m *FilterModel) apply() {

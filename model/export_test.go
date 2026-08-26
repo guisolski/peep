@@ -14,7 +14,7 @@ func TestNode_Schema(t *testing.T) {
 		{
 			"nested object",
 			`{"user":{"name":"Alice","age":30}}`,
-			"{\n  user: {\n    age: number = 30\n    name: string = \"Alice\"\n  }\n}",
+			"{\n  user: {\n    name: string = \"Alice\"\n    age: number = 30\n  }\n}",
 		},
 		{
 			"array of scalars",
@@ -34,12 +34,22 @@ func TestNode_Schema(t *testing.T) {
 		{
 			"empty containers",
 			`{"empty_obj":{},"empty_arr":[]}`,
-			"{\n  empty_arr: []\n  empty_obj: {}\n}",
+			"{\n  empty_obj: {}\n  empty_arr: []\n}",
 		},
 		{
 			"null scalar root",
 			`null`,
 			"null",
+		},
+		{
+			"big integer field preserves exact literal",
+			`{"id":9223372036854775807}`,
+			"{\n  id: number = 9223372036854775807\n}",
+		},
+		{
+			"float trailing zeros preserved",
+			`{"price":10.50000}`,
+			"{\n  price: number = 10.50000\n}",
 		},
 	}
 	for _, tc := range cases {
@@ -110,6 +120,16 @@ func TestNode_CompactYAML(t *testing.T) {
 			"empty array",
 			`[]`,
 			"[]",
+		},
+		{
+			"big integer preserves exact literal",
+			`{"id":9223372036854775807}`,
+			"id: 9223372036854775807",
+		},
+		{
+			"float trailing zeros preserved",
+			`{"price":10.50000}`,
+			"price: 10.50000",
 		},
 	}
 	for _, tc := range cases {

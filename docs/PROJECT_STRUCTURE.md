@@ -74,9 +74,9 @@ system clipboard) → interactive paste (blocks on stdin until `Ctrl+D`). Return
 | `raw.go` | `RawModel` — scrollable pretty-printed JSON viewport |
 | `search.go` | `SearchModel` — fuzzy key/value search over the flattened tree |
 | `filter.go` | `FilterModel` — live `jq` filter input, renders results via `RawModel` |
-| `node.go` | `Node` — parsed JSON tree (`ParseJSON`, `Path`, `Summary`, `ToInterface`) |
+| `node.go` | `Node` — parsed JSON tree (`ParseJSON`, `Path`, `Summary`, `MarshalJSONTo`) |
 | `export.go` | `Node.Schema()` and `Node.CompactYAML()` — LLM-friendly export formats |
-| `jq.go` | `parseJQ`, `EvalAllJQ` — shared `gojq` evaluation used by both the filter view and `--query` |
+| `jq.go` | `compileJQ`, `unmarshalJSON`, `runJQFirst`, `EvalAllJQ` — shared `gojq` evaluation used by both the filter view and `--query` |
 
 ### clipboard/
 
@@ -116,7 +116,7 @@ the terminal background, plus shared box/status-bar/mode-tag styles used across
 | Search | `model/search.go` |
 | jq filter view | `model/filter.go` |
 | JSON parsing into the internal tree | `model/node.go` (`ParseJSON`) |
-| JSON node → path/summary/native value | `model/node.go` (`Path`, `Summary`, `ToInterface`) |
+| JSON node → path/summary/native value | `model/node.go` (`Path`, `Summary`, `MarshalJSONTo`) |
 | Schema export (`S` key, `--schema`) | `model/export.go` (`Node.Schema`) |
 | LLM/compact-YAML export (`L` key, `--llm`) | `model/export.go` (`Node.CompactYAML`) |
 | jq evaluation (filter view and `--query`) | `model/jq.go` |
@@ -163,6 +163,7 @@ Run from the repository root: `go test ./... -race` or `make test`.
 | Build | `make build` (produces `./peep`) |
 | Install to `$(PREFIX)/bin` | `make install` |
 | Run tests | `make test` (`go test ./... -race`) |
+| Run benchmarks | `make bench` (`go test ./... -run=^$ -bench=. -benchmem`) |
 | Vet | `make vet` |
 | Format check | `make fmt` |
 | Lint | `make lint` |

@@ -71,7 +71,9 @@ func (n *Node) exampleValue() string {
 			s = string(r[:schemaMaxStringLen]) + "…"
 		}
 		return fmt.Sprintf("%q", s)
-	case TypeNumber, TypeBool:
+	case TypeNumber:
+		return n.NumRaw
+	case TypeBool:
 		return n.Summary()
 	}
 	return ""
@@ -116,7 +118,7 @@ func writeIndent(sb *strings.Builder, depth int) {
 // (unquoted) scalars where unambiguous, 2-space indents, no braces/commas,
 // and inline [a, b, c] for scalar-only arrays. It is a one-way,
 // non-round-trippable export optimized purely for LLM prompt tokens — use
-// Node.ToInterface() with json.Marshal if you need real, parseable JSON.
+// json.Marshal(n, ...) if you need real, parseable JSON back out.
 func (n *Node) CompactYAML() string {
 	var sb strings.Builder
 	switch n.Type {
@@ -255,7 +257,9 @@ func scalarRepr(n *Node) string {
 	switch n.Type {
 	case TypeString:
 		return yamlString(n.StrVal)
-	case TypeNumber, TypeBool, TypeNull:
+	case TypeNumber:
+		return n.NumRaw
+	case TypeBool, TypeNull:
 		return n.Summary()
 	}
 	return ""

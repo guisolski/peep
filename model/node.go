@@ -1,9 +1,12 @@
 package model
 
 import (
-	"encoding/json/v2"
+	"bytes"
+	"encoding/json/jsontext"
+	"errors"
 	"fmt"
-	"sort"
+	"io"
+	"strconv"
 )
 
 type NodeType int
@@ -18,10 +21,15 @@ const (
 )
 
 type Node struct {
-	Type      NodeType
-	Key       string
-	StrVal    string
+	Type   NodeType
+	Key    string
+	StrVal string
+	// NumVal is a best-effort float64 conversion of a numeric value, kept
+	// for internal numeric use. NumRaw holds the original JSON literal text
+	// verbatim and is the source of truth for display/export, since NumVal
+	// silently loses precision for integers beyond 2^53.
 	NumVal    float64
+	NumRaw    string
 	BoolVal   bool
 	Children  []*Node
 	Parent    *Node
@@ -57,10 +65,7 @@ func (n *Node) Summary() string {
 	case TypeString:
 		return fmt.Sprintf("%q", n.StrVal)
 	case TypeNumber:
-		if n.NumVal == float64(int64(n.NumVal)) {
-			return fmt.Sprintf("%d", int64(n.NumVal))
-		}
-		return fmt.Sprintf("%g", n.NumVal)
+		return n.NumRaw
 	case TypeBool:
 		if n.BoolVal {
 			return "true"
@@ -72,67 +77,120 @@ func (n *Node) Summary() string {
 	return ""
 }
 
-func (n *Node) ToInterface() interface{} {
+// MarshalJSONTo implements encoding/json/v2's MarshalerTo, writing n's
+// subtree directly to enc — preserving Children order and NumRaw's exact
+// numeric literal text, so json.Marshal(n, ...) round-trips big integers
+// exactly instead of going through a float64-lossy intermediate value.
+func (n *Node) MarshalJSONTo(enc *jsontext.Encoder) error {
 	switch n.Type {
 	case TypeObject:
-		m := make(map[string]interface{}, len(n.Children))
+		if err := enc.WriteToken(jsontext.BeginObject); err != nil {
+			return err
+		}
 		for _, c := range n.Children {
-			m[c.Key] = c.ToInterface()
+			if err := enc.WriteToken(jsontext.String(c.Key)); err != nil {
+				return err
+			}
+			if err := c.MarshalJSONTo(enc); err != nil {
+				return err
+			}
 		}
-		return m
+		return enc.WriteToken(jsontext.EndObject)
 	case TypeArray:
-		arr := make([]interface{}, len(n.Children))
-		for i, c := range n.Children {
-			arr[i] = c.ToInterface()
+		if err := enc.WriteToken(jsontext.BeginArray); err != nil {
+			return err
 		}
-		return arr
+		for _, c := range n.Children {
+			if err := c.MarshalJSONTo(enc); err != nil {
+				return err
+			}
+		}
+		return enc.WriteToken(jsontext.EndArray)
 	case TypeString:
-		return n.StrVal
+		return enc.WriteToken(jsontext.String(n.StrVal))
 	case TypeNumber:
-		return n.NumVal
+		return enc.WriteValue(jsontext.Value(n.NumRaw))
 	case TypeBool:
-		return n.BoolVal
+		return enc.WriteToken(jsontext.Bool(n.BoolVal))
 	case TypeNull:
-		return nil
+		return enc.WriteToken(jsontext.Null)
 	}
-	return nil
+	return fmt.Errorf("unknown node type %v", n.Type)
 }
 
+// ParseJSON decodes data in a single streaming pass directly into a *Node
+// tree — no intermediate interface{} representation. Object key order
+// matches the source document (never reordered), and NumRaw preserves each
+// number's exact original literal text.
 func ParseJSON(data []byte) (*Node, error) {
-	var v interface{}
-	if err := json.Unmarshal(data, &v); err != nil {
+	dec := jsontext.NewDecoder(bytes.NewReader(data))
+	root, err := decodeNode(dec, "", nil, 0, false)
+	if err != nil {
 		return nil, err
 	}
-	return buildNode(v, "", nil, 0, false), nil
+	// jsontext.Decoder supports reading a stream of top-level values, but
+	// peep documents must be exactly one JSON value — reject trailing
+	// content the way json.Unmarshal already did.
+	if tok, err := dec.ReadToken(); err == nil {
+		return nil, fmt.Errorf("unexpected trailing data after top-level JSON value: %s", tok.String())
+	} else if !errors.Is(err, io.EOF) {
+		return nil, err
+	}
+	return root, nil
 }
 
-func buildNode(v interface{}, key string, parent *Node, depth int, isArrItem bool) *Node {
-	n := &Node{Key: key, Parent: parent, Depth: depth, IsArrItem: isArrItem}
-	switch val := v.(type) {
-	case map[string]interface{}:
-		n.Type = TypeObject
-		for k, child := range val {
-			n.Children = append(n.Children, buildNode(child, k, n, depth+1, false))
-		}
-		sort.Slice(n.Children, func(i, j int) bool {
-			return n.Children[i].Key < n.Children[j].Key
-		})
-	case []interface{}:
-		n.Type = TypeArray
-		for i, child := range val {
-			n.Children = append(n.Children, buildNode(child, fmt.Sprintf("%d", i), n, depth+1, true))
-		}
-	case string:
-		n.Type = TypeString
-		n.StrVal = val
-	case float64:
-		n.Type = TypeNumber
-		n.NumVal = val
-	case bool:
-		n.Type = TypeBool
-		n.BoolVal = val
-	case nil:
-		n.Type = TypeNull
+func decodeNode(dec *jsontext.Decoder, key string, parent *Node, depth int, isArrItem bool) (*Node, error) {
+	tok, err := dec.ReadToken()
+	if err != nil {
+		return nil, err
 	}
-	return n
+	n := &Node{Key: key, Parent: parent, Depth: depth, IsArrItem: isArrItem}
+	switch tok.Kind() {
+	case jsontext.KindBeginObject:
+		n.Type = TypeObject
+		for dec.PeekKind() != jsontext.KindEndObject {
+			nameTok, err := dec.ReadToken()
+			if err != nil {
+				return nil, err
+			}
+			child, err := decodeNode(dec, nameTok.String(), n, depth+1, false)
+			if err != nil {
+				return nil, err
+			}
+			n.Children = append(n.Children, child)
+		}
+		if _, err := dec.ReadToken(); err != nil { // consume '}'
+			return nil, err
+		}
+	case jsontext.KindBeginArray:
+		n.Type = TypeArray
+		for i := 0; dec.PeekKind() != jsontext.KindEndArray; i++ {
+			child, err := decodeNode(dec, strconv.Itoa(i), n, depth+1, true)
+			if err != nil {
+				return nil, err
+			}
+			n.Children = append(n.Children, child)
+		}
+		if _, err := dec.ReadToken(); err != nil { // consume ']'
+			return nil, err
+		}
+	case jsontext.KindString:
+		n.Type = TypeString
+		n.StrVal = tok.String()
+	case jsontext.KindNumber:
+		n.Type = TypeNumber
+		n.NumRaw = tok.String()
+		n.NumVal, _ = tok.Float() // best-effort; NumRaw is the source of truth
+	case jsontext.KindTrue:
+		n.Type = TypeBool
+		n.BoolVal = true
+	case jsontext.KindFalse:
+		n.Type = TypeBool
+		n.BoolVal = false
+	case jsontext.KindNull:
+		n.Type = TypeNull
+	default:
+		return nil, fmt.Errorf("unexpected token kind %v", tok.Kind())
+	}
+	return n, nil
 }

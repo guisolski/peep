@@ -70,12 +70,19 @@ under `tea.NewProgram(app, tea.WithAltScreen(), tea.WithMouseCellMotion())`.
 
 ## The JSON node tree
 
-`model.ParseJSON` (`model/node.go`) unmarshals raw JSON into `interface{}` and
-walks it into a `*Node` tree — the single representation every view and export
-mode operates on. Object keys are sorted so tree order is deterministic; array
-items carry `IsArrItem: true` so `Node.Path()` can render `foo[2]` instead of
-`foo.2`. Every node keeps a `Parent` pointer, which is what makes `Path()` and the
-tree view's collapse/expand walk possible without re-parsing.
+`model.ParseJSON` (`model/node.go`) decodes raw JSON directly into a `*Node`
+tree in a single streaming pass over `encoding/json/jsontext.Decoder` — no
+intermediate `interface{}` representation. Object keys keep the source
+document's order (never sorted); array items carry `IsArrItem: true` so
+`Node.Path()` can render `foo[2]` instead of `foo.2`. Every node keeps a
+`Parent` pointer, which is what makes `Path()` and the tree view's
+collapse/expand walk possible without re-parsing.
+
+Numbers carry two fields: `NumVal` (a best-effort `float64`, kept for internal
+numeric use) and `NumRaw` (the exact original literal text, read verbatim via
+`Token.String()`). `NumRaw` is the source of truth everywhere a number is
+displayed, copied, or exported — `NumVal` silently loses precision for
+integers beyond 2^53, which `NumRaw` never does.
 
 Three read-only projections exist on top of `Node`, all in `model/export.go` and
 `model/jq.go`:
@@ -87,22 +94,39 @@ Three read-only projections exist on top of `Node`, all in `model/export.go` and
   prompting an LLM about a document's shape without sending the whole payload.
 - **`Node.CompactYAML()`** — a dense, YAML-like serialization of the actual values
   (bare scalars where unambiguous, inline `[a, b, c]` for scalar arrays) — also
-  one-way, optimized for prompt tokens rather than round-tripping. Use
-  `Node.ToInterface()` + `json.Marshal` when you need real JSON back out.
+  one-way, optimized for prompt tokens rather than round-tripping. `Node` itself
+  implements `MarshalJSONTo`, so `json.Marshal(node, ...)` is how real,
+  round-trippable JSON — including `NumRaw`'s exact numeric literals — comes
+  back out.
 
-`model/jq.go` shares one `parseJQ(data, expr)` helper between two callers with
-different result semantics: `FilterModel.Eval` (in `filter.go`) takes only the
-*first* result, for a fast interactive live preview; `EvalAllJQ` takes *every*
-result the `gojq` program yields — including continuing past a per-output runtime
-error — mirroring how the real `jq` CLI behaves, which is what `--query` needs.
+`model/jq.go` splits jq evaluation into small, pure pieces: `compileJQ(expr)`
+parses a jq expression into a `*gojq.Query`; `unmarshalJSON(data)` is the one
+I/O step, decoding a document into `interface{}` for `gojq` to run against;
+`runJQFirst(q, v)` runs a compiled query and returns only its first result.
+`FilterModel` (in `filter.go`) calls `unmarshalJSON` once, in `NewFilterModel`,
+and caches the result — `Eval` re-parsing the whole document on every
+keystroke while the user types a filter expression used to be the dominant
+cost of that mode. `EvalAllJQ` composes the same `compileJQ`/`unmarshalJSON`
+building blocks directly (no cache — it is a single-shot call for the
+headless `--query` flag) and takes *every* result the `gojq` program yields,
+including continuing past a per-output runtime error, mirroring how the real
+`jq` CLI behaves.
 
 ## The Bubble Tea model tree
 
 `App` (`model/app.go`) is the root `tea.Model`. It owns one instance of each view
 sub-model — `TreeModel`, `GraphModel`, `RawModel`, `SearchModel`, `FilterModel` —
-all built once in `NewApp` from the same parsed `Node` tree (or, for `RawModel`
-and `FilterModel`, the same raw bytes). `App` never rebuilds them; switching modes
-just changes which one is rendered and which one receives key events.
+built from the same parsed `Node` tree (or, for `RawModel` and `FilterModel`, the
+same raw bytes). `TreeModel` and `GraphModel` are built eagerly in `NewApp`, since
+every session uses the tree view and graph construction is cheap. `RawModel`,
+`SearchModel`, and `FilterModel` are built lazily instead, via the
+`rawModel()`/`searchModel()`/`filterModel()` accessors, the first time their mode
+is entered (`r`, `/`, `:`) — each does real up-front work over the whole document
+(`RawModel` pretty-prints it, `SearchModel` flattens the whole tree via
+`FlatAll()`, `FilterModel` embeds a `RawModel`), which used to run on every
+session even when a user never opened that mode. Once built, a sub-model is
+cached on its `App` field and never rebuilt; switching modes just changes which
+one is rendered and which one receives key events.
 
 Every view sub-model implements the small `SubModel` interface (`model/submodel.go`):
 
@@ -116,8 +140,11 @@ type SubModel interface {
 
 `App.Update` handles, in order:
 
-1. **`tea.WindowSizeMsg`** — forwarded to all five sub-models unconditionally, so
-   every view stays correctly sized even while hidden.
+1. **`tea.WindowSizeMsg`** — forwarded to `TreeModel`/`GraphModel` unconditionally,
+   and to `RawModel`/`SearchModel`/`FilterModel` only if already built (a plain
+   nil check, not the lazy accessors — this message arrives before any key, so
+   routing it through the accessors would force-build every sub-model on the
+   first frame and defeat the laziness above).
 2. **Global keys** — `ctrl+c` always quits (unless `App.embedded`); `q` quits
    unless a text input (search/filter) is focused (`App.InputActive()`); `esc`
    exits search/filter back to tree mode.

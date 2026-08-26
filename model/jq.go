@@ -7,19 +7,40 @@ import (
 	"github.com/itchyny/gojq"
 )
 
-// parseJQ parses expr and unmarshals data, the common first step shared by
-// FilterModel.Eval (first-result-only, for the live filter view) and
-// EvalAllJQ (all-results, for the headless --query flag).
-func parseJQ(data []byte, expr string) (*gojq.Query, interface{}, error) {
+// compileJQ parses a jq expression into a query. Pure: same expr always
+// yields an equivalent query or the same error.
+func compileJQ(expr string) (*gojq.Query, error) {
 	q, err := gojq.Parse(expr)
 	if err != nil {
-		return nil, nil, fmt.Errorf("parse: %w", err)
+		return nil, fmt.Errorf("parse: %w", err)
 	}
+	return q, nil
+}
+
+// unmarshalJSON is the sole I/O step shared by FilterModel.Eval and
+// EvalAllJQ: decoding the document jq queries run against. Callers that
+// evaluate many expressions against the same document (FilterModel) should
+// call this once and reuse the result instead of re-decoding per query.
+func unmarshalJSON(data []byte) (interface{}, error) {
 	var v interface{}
 	if err := json.Unmarshal(data, &v); err != nil {
-		return nil, nil, fmt.Errorf("unmarshal: %w", err)
+		return nil, fmt.Errorf("unmarshal: %w", err)
 	}
-	return q, v, nil
+	return v, nil
+}
+
+// runJQFirst runs q against v and returns only the first output,
+// marshaled. Pure: depends only on its arguments.
+func runJQFirst(q *gojq.Query, v interface{}) ([]byte, error) {
+	iter := q.Run(v)
+	val, ok := iter.Next()
+	if !ok {
+		return []byte("null"), nil
+	}
+	if err, ok := val.(error); ok {
+		return nil, err
+	}
+	return json.Marshal(val)
 }
 
 // JQResult is one output of a jq evaluation: either a marshaled value or,
@@ -35,7 +56,11 @@ type JQResult struct {
 // mirrors real jq's behavior of emitting (and printing) every value a
 // query yields, including continuing past a per-output runtime error.
 func EvalAllJQ(data []byte, expr string) ([]JQResult, error) {
-	q, v, err := parseJQ(data, expr)
+	q, err := compileJQ(expr)
+	if err != nil {
+		return nil, err
+	}
+	v, err := unmarshalJSON(data)
 	if err != nil {
 		return nil, err
 	}

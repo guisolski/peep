@@ -38,3 +38,11 @@ func TestFilterModel_EvalSyntaxError(t *testing.T) {
 		t.Fatal("expected parse error, got nil")
 	}
 }
+
+func TestFilterModel_Eval_InvalidDocument(t *testing.T) {
+	fm := NewFilterModel([]byte(`not json`), 80, 20)
+	_, err := fm.Eval(".a")
+	if err == nil {
+		t.Fatal("expected error for invalid document, got nil")
+	}
+}
