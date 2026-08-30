@@ -2,7 +2,7 @@
 
 A terminal UI for exploring JSON. Pipe in a payload, open a file, or paste from
 the clipboard, then browse it as a collapsible tree, a Miller-column graph, or
-raw pretty-printed text — with fuzzy search and live `jq` filtering built in.
+raw pretty-printed text — with English-friendly search and live `jq` filtering built in.
 
 Built with [Bubble Tea](https://github.com/charmbracelet/bubbletea) and
 [gojq](https://github.com/itchyny/gojq).
@@ -13,7 +13,7 @@ Built with [Bubble Tea](https://github.com/charmbracelet/bubbletea) and
 - **Graph view** — Miller-column (depth-panel) layout for navigating wide/deep structures
 - **Order- and precision-preserving** — object keys keep the source document's original order (never re-sorted), and large integers (e.g. IDs beyond 2^53) keep full precision wherever a value is displayed, copied, or exported
 - **Raw view** — scrollable, pretty-printed JSON
-- **Search** — fuzzy-match keys/values and cycle through matches
+- **Search** — English-friendly search over keys/values (`id:2`, `which have id 2?`, `value greater than 5`) with `n`/`N` to cycle hits
 - **Filter** — live `jq` expression evaluation against the loaded document
 - **Clipboard integration** — copy a value, a subtree, a JSON path, a schema, or an LLM-friendly export with a keystroke
 - **LLM export** — copy or print a compact schema (types + example values) or a dense YAML-like serialization, sized for pasting into a prompt
@@ -107,6 +107,18 @@ peep --version                       # print the version and exit
 
 ### Search (`/`)
 
+Type plain English or simple patterns. Hits are highlighted in the tree; collapsed
+ancestors expand automatically.
+
+| Example | Meaning |
+|---|---|
+| `alice` | key or value contains `alice` |
+| `id 2` | both terms must match the same node |
+| `id:2` / `id: 2` | field `id` whose value contains `2` |
+| `which have id 2?` | same idea after stripping English filler words |
+| `value greater than 5` / `id > 5` | numeric comparison on a field |
+| `"via place"` | literal phrase |
+
 | Key | Action |
 |---|---|
 | `n` / `N` | Next / previous match |
@@ -114,7 +126,8 @@ peep --version                       # print the version and exit
 
 ### Filter (`:`)
 
-Type a `jq` expression and see the result rendered live in the raw view.
+Type a `jq` expression and see the result rendered live in the raw view. Use this
+for complex queries; `/` is for quick human search.
 
 | Key | Action |
 |---|---|

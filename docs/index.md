@@ -2,7 +2,7 @@
 
 peep is a terminal UI for exploring JSON: pipe in a payload, open a file, or paste
 from the clipboard, then browse it as a collapsible tree, a Miller-column graph, or
-raw pretty-printed text — with fuzzy search and live `jq` filtering built in. It also
+raw pretty-printed text — with English-friendly search and live `jq` filtering built in. It also
 runs headless (no TUI) for scripting.
 
 ## Why peep exists
@@ -19,7 +19,7 @@ peep is built for the moment *before* you know what you're looking for: a large 
 deeply-nested API response, a config file, a log line, a database export. The goal
 is to make the **shape** of the data visible first — via a collapsible tree or a
 Miller-column graph — so you can navigate to what matters, then drop into `jq`
-filtering or fuzzy search once you know what you're after, all without leaving the
+filtering or English-friendly search once you know what you're after, all without leaving the
 shell or losing your place in the surrounding workflow.
 
 ## Design goals

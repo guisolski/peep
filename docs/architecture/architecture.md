@@ -200,9 +200,11 @@ special-casing in either mode.
 - **Raw (`raw.go`)** — a `bubbles/viewport` showing `data` reindented via
   `jsontext.Value.Indent`; `SetContent` lets `FilterModel` push new content into
   the same viewport without allocating a new one.
-- **Search (`search.go`)** — matches against a full (not just visible) flattened
-  tree captured once in `NewSearchModel` via `tree.FlatAll()`, so search can find
-  nodes that are currently collapsed.
+- **Search (`search.go`, `search_query.go`)** — parses an English-friendly query
+  (terms, `key:value`, `greater than` / `>` etc.) against a full (not just visible)
+  flattened tree captured once in `NewSearchModel` via `tree.FlatAll()`, expands
+  ancestors of hits so collapsed matches become visible, then highlights and
+  cycles them with `n`/`N`.
 - **Filter (`filter.go`)** — wraps a `RawModel` plus a `textinput.Model`; each
   keystroke re-evaluates the jq expression via the shared `parseJQ` and pushes the
   first result into the embedded `RawModel`, or shows `errMsg` on a parse/runtime
