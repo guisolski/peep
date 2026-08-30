@@ -23,7 +23,7 @@ func NewFilterModel(data []byte, width, height int) *FilterModel {
 	ti.Focus()
 	parsed, parseErr := unmarshalJSON(data)
 	return &FilterModel{
-		raw:      NewRawModel(data, width, height-2),
+		raw:      NewRawModel(data, width, contentHeight(height, chromeRows(ModeFilter))),
 		data:     data,
 		parsed:   parsed,
 		parseErr: parseErr,
@@ -78,7 +78,7 @@ func (m *FilterModel) Update(msg tea.Msg) (SubModel, tea.Cmd) {
 		return m, cmd
 	case tea.WindowSizeMsg:
 		m.raw.vp.Width = msg.Width
-		m.raw.vp.Height = msg.Height - 2
+		m.raw.vp.Height = contentHeight(msg.Height, chromeRows(ModeFilter))
 	}
 	return m, nil
 }

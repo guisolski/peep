@@ -16,7 +16,7 @@ func NewRawModel(data []byte, width, height int) *RawModel {
 	if err := pretty.Indent(jsontext.WithIndent("  ")); err != nil {
 		pretty = data
 	}
-	vp := viewport.New(width, height-1)
+	vp := viewport.New(width, contentHeight(height, 1))
 	vp.SetContent(string(pretty))
 	return &RawModel{vp: vp}
 }
@@ -35,7 +35,7 @@ func (m *RawModel) Update(msg tea.Msg) (SubModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.vp.Width = msg.Width
-		m.vp.Height = msg.Height - 1
+		m.vp.Height = contentHeight(msg.Height, 1)
 	}
 	var cmd tea.Cmd
 	m.vp, cmd = m.vp.Update(msg)

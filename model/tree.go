@@ -62,7 +62,7 @@ func (m *TreeModel) Update(msg tea.Msg) (SubModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
-		m.height = msg.Height - 1
+		m.height = contentHeight(msg.Height, 1)
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "j", "down":
