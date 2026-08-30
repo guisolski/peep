@@ -10,16 +10,16 @@ import (
 )
 
 type SearchModel struct {
-	tree    *TreeModel
-	input   textinput.Model
-	matches []int
-	current int
-	allFlat []*Node
+	tree       *TreeModel
+	input      textinput.Model
+	matchNodes []*Node
+	current    int
+	allFlat    []*Node
 }
 
 func NewSearchModel(tree *TreeModel) *SearchModel {
 	ti := textinput.New()
-	ti.Placeholder = "search…"
+	ti.Placeholder = "ask in English · id:2 · greater than 5"
 	ti.Focus()
 	sm := &SearchModel{tree: tree, input: ti}
 	sm.allFlat = tree.FlatAll()
@@ -31,57 +31,67 @@ func (m *SearchModel) SetQuery(q string) {
 	m.recompute()
 }
 
-func (m *SearchModel) Query() string  { return m.input.Value() }
-func (m *SearchModel) Matches() []int { return m.matches }
-func (m *SearchModel) Current() int   { return m.current }
+func (m *SearchModel) Query() string { return m.input.Value() }
+
+// Matches returns indices into the FlatAll snapshot for the current hits.
+func (m *SearchModel) Matches() []int {
+	out := make([]int, 0, len(m.matchNodes))
+	for _, n := range m.matchNodes {
+		if i := indexInNodes(m.allFlat, n); i >= 0 {
+			out = append(out, i)
+		}
+	}
+	return out
+}
+
+func (m *SearchModel) Current() int { return m.current }
 
 func (m *SearchModel) Next() {
-	if len(m.matches) == 0 {
+	if len(m.matchNodes) == 0 {
 		return
 	}
-	m.current = (m.current + 1) % len(m.matches)
+	m.current = (m.current + 1) % len(m.matchNodes)
 	m.applyHighlights()
 }
 
 func (m *SearchModel) Prev() {
-	if len(m.matches) == 0 {
+	if len(m.matchNodes) == 0 {
 		return
 	}
-	m.current = (m.current - 1 + len(m.matches)) % len(m.matches)
+	m.current = (m.current - 1 + len(m.matchNodes)) % len(m.matchNodes)
 	m.applyHighlights()
 }
 
 func (m *SearchModel) recompute() {
-	q := strings.ToLower(m.input.Value())
-	m.matches = nil
-	for i, n := range m.allFlat {
-		if nodeMatchesQuery(n, q) {
-			m.matches = append(m.matches, i)
+	clauses := parseSearchQuery(m.input.Value())
+	m.matchNodes = nil
+	for _, n := range m.allFlat {
+		if nodeMatchesClauses(n, clauses) {
+			m.matchNodes = append(m.matchNodes, n)
 		}
 	}
 	m.current = 0
 	m.applyHighlights()
 }
 
-func nodeMatchesQuery(n *Node, q string) bool {
-	if q == "" {
-		return false
-	}
-	if strings.Contains(strings.ToLower(n.Key), q) {
-		return true
-	}
-	return strings.Contains(strings.ToLower(n.Summary()), q)
-}
-
 func (m *SearchModel) applyHighlights() {
+	for _, n := range m.matchNodes {
+		expandAncestors(n)
+	}
+	m.tree.rebuild()
+
 	h := map[int]bool{}
-	for _, idx := range m.matches {
-		h[idx] = true
+	for _, n := range m.matchNodes {
+		if i := visibleIndex(m.tree, n); i >= 0 {
+			h[i] = true
+		}
 	}
 	m.tree.SetHighlights(h)
-	if len(m.matches) > 0 {
-		m.tree.cursor = m.matches[m.current]
-		m.tree.clampOffset()
+	if len(m.matchNodes) > 0 {
+		if i := visibleIndex(m.tree, m.matchNodes[m.current]); i >= 0 {
+			m.tree.cursor = i
+			m.tree.clampOffset()
+		}
 	}
 }
 
@@ -114,8 +124,8 @@ func (m *SearchModel) View() string {
 	var sb strings.Builder
 	sb.WriteString(m.tree.View())
 	sb.WriteString(ui.Yellow.Render("/") + " " + m.input.View())
-	if len(m.matches) > 0 {
-		sb.WriteString("  " + ui.Muted.Render(fmt.Sprintf("[%d/%d]", m.current+1, len(m.matches))))
+	if len(m.matchNodes) > 0 {
+		sb.WriteString("  " + ui.Muted.Render(fmt.Sprintf("[%d/%d]", m.current+1, len(m.matchNodes))))
 	}
 	return sb.String()
 }

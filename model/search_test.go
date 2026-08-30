@@ -72,6 +72,58 @@ func TestSearchModel_EmptyQuery(t *testing.T) {
 	}
 }
 
+func TestSearchModel_EnglishNLAndReveal(t *testing.T) {
+	data := []byte(`[
+		{"id":1,"value":3},
+		{"id":2,"value":9},
+		{"id":3,"value":1}
+	]`)
+	cases := []struct {
+		name       string
+		query      string
+		wantKey    string
+		wantNumRaw string
+		minHits    int
+	}{
+		{"which have id 2", "which have id 2?", "id", "2", 1},
+		{"id colon 2", "id: 2", "id", "2", 1},
+		{"value greater than 5", "value greater than 5", "value", "9", 1},
+		{"id > 1", "id > 1", "id", "2", 2},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			root, err := ParseJSON(data)
+			if err != nil {
+				t.Fatal(err)
+			}
+			tm := NewTreeModel(root, 80, 24)
+			sm := NewSearchModel(tm)
+			sm.SetQuery(tc.query)
+			if len(sm.matchNodes) < tc.minHits {
+				t.Fatalf("hits = %d, want >= %d for %q", len(sm.matchNodes), tc.minHits, tc.query)
+			}
+			cur := sm.matchNodes[sm.current]
+			if cur.Key != tc.wantKey || cur.NumRaw != tc.wantNumRaw {
+				// For multi-hit queries, ensure at least one match has the expected pair.
+				found := false
+				for _, n := range sm.matchNodes {
+					if n.Key == tc.wantKey && n.NumRaw == tc.wantNumRaw {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Fatalf("no hit with key=%q NumRaw=%q; current=%q/%q",
+						tc.wantKey, tc.wantNumRaw, cur.Key, cur.NumRaw)
+				}
+			}
+			if visibleIndex(tm, sm.matchNodes[0]) < 0 {
+				t.Fatal("first match not visible after expandAncestors")
+			}
+		})
+	}
+}
+
 // TestApp_SearchViewFitsTerminal documents the search chrome bug: with a
 // filled tree viewport, stacking the "/" prompt on Height-1 overflowed by
 // one row and scrolled the prompt into the main area. Search must reserve

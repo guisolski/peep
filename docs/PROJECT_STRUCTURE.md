@@ -72,7 +72,7 @@ system clipboard) → interactive paste (blocks on stdin until `Ctrl+D`). Return
 | `tree.go` | `TreeModel` — collapsible tree view, cursor movement, expand/collapse |
 | `graph.go` | `GraphModel` — Miller-column (depth-panel) layout |
 | `raw.go` | `RawModel` — scrollable pretty-printed JSON viewport |
-| `search.go` | `SearchModel` — fuzzy key/value search over the flattened tree |
+| `search.go` / `search_query.go` | `SearchModel` — English-friendly key/value search (terms, `key:value`, comparators) over the flattened tree |
 | `filter.go` | `FilterModel` — live `jq` filter input, renders results via `RawModel` |
 | `node.go` | `Node` — parsed JSON tree (`ParseJSON`, `Path`, `Summary`, `MarshalJSONTo`) |
 | `export.go` | `Node.Schema()` and `Node.CompactYAML()` — LLM-friendly export formats |
@@ -113,7 +113,7 @@ the terminal background, plus shared box/status-bar/mode-tag styles used across
 | Tree view | `model/tree.go` |
 | Graph (Miller-column) view | `model/graph.go` |
 | Raw pretty-printed view | `model/raw.go` |
-| Search | `model/search.go` |
+| Search | `model/search.go`, `model/search_query.go` |
 | jq filter view | `model/filter.go` |
 | JSON parsing into the internal tree | `model/node.go` (`ParseJSON`) |
 | JSON node → path/summary/native value | `model/node.go` (`Path`, `Summary`, `MarshalJSONTo`) |
