@@ -60,3 +60,40 @@ func TestApp_WindowSizeBeforeAnyKey(t *testing.T) {
 		t.Fatal("WindowSizeMsg should not eagerly construct lazy sub-models")
 	}
 }
+
+// TestApp_SearchTypingIgnoresModeKeys documents that mode-switch keys must
+// insert into the search query while the input is focused — otherwise typing
+// "id:" jumps into filter mode on the colon.
+func TestApp_SearchTypingIgnoresModeKeys(t *testing.T) {
+	cases := []struct {
+		name string
+		key  string
+	}{
+		{"colon stays in search", ":"},
+		{"slash stays in search", "/"},
+		{"r stays in search", "r"},
+		{"g stays in search", "g"},
+		{"q stays in search", "q"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			app, err := NewApp([]byte(`{"id":1}`), "test.json", 80, 24)
+			if err != nil {
+				t.Fatalf("NewApp: %v", err)
+			}
+			model, _ := app.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+			app = model.(*App)
+			model, _ = app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("/")})
+			app = model.(*App)
+			model, _ = app.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(tc.key)})
+			app = model.(*App)
+
+			if app.mode != ModeSearch {
+				t.Fatalf("mode = %v, want ModeSearch after key %q", app.mode, tc.key)
+			}
+			if got := app.searchModel().Query(); got != tc.key {
+				t.Fatalf("query = %q, want %q", got, tc.key)
+			}
+		})
+	}
+}

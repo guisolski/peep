@@ -156,92 +156,96 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return a, nil
 		}
 
-		// Multi-key sequences and mode switches.
-		switch msg.String() {
-		case "g":
-			if a.pendingKey == "g" {
-				a.pendingKey = ""
-				a.tree.JumpToTop()
-				return a, nil
-			}
-			a.pendingKey = "g"
-			return a, tea.Tick(300*time.Millisecond, func(t time.Time) tea.Msg {
-				return pendingKeyTimeoutMsg{"g"}
-			})
+		// Multi-key sequences and mode switches — skipped while a text
+		// input is focused so printable keys (e.g. ":" in "id:") insert
+		// into the query instead of changing modes.
+		if !a.InputActive() {
+			switch msg.String() {
+			case "g":
+				if a.pendingKey == "g" {
+					a.pendingKey = ""
+					a.tree.JumpToTop()
+					return a, nil
+				}
+				a.pendingKey = "g"
+				return a, tea.Tick(300*time.Millisecond, func(t time.Time) tea.Msg {
+					return pendingKeyTimeoutMsg{"g"}
+				})
 
-		case "y":
-			if a.mode != ModeTree && a.mode != ModeSearch {
-				break
-			}
-			if a.pendingKey == "y" {
-				a.pendingKey = ""
-				if n := a.tree.CurrentNode(); n != nil {
-					if b, err := json.Marshal(n, jsontext.WithIndent("  ")); err == nil {
-						if err2 := clipboard.Copy(string(b)); err2 == nil {
-							a.statusMsg = "copied subtree"
+			case "y":
+				if a.mode != ModeTree && a.mode != ModeSearch {
+					break
+				}
+				if a.pendingKey == "y" {
+					a.pendingKey = ""
+					if n := a.tree.CurrentNode(); n != nil {
+						if b, err := json.Marshal(n, jsontext.WithIndent("  ")); err == nil {
+							if err2 := clipboard.Copy(string(b)); err2 == nil {
+								a.statusMsg = "copied subtree"
+							}
 						}
 					}
+					return a, nil
 				}
-				return a, nil
-			}
-			a.pendingKey = "y"
-			return a, tea.Tick(300*time.Millisecond, func(t time.Time) tea.Msg {
-				return pendingKeyTimeoutMsg{"y"}
-			})
+				a.pendingKey = "y"
+				return a, tea.Tick(300*time.Millisecond, func(t time.Time) tea.Msg {
+					return pendingKeyTimeoutMsg{"y"}
+				})
 
-		case "Y":
-			if a.mode == ModeTree || a.mode == ModeSearch {
-				a.pendingKey = ""
-				if n := a.tree.CurrentNode(); n != nil {
-					if err := clipboard.Copy(n.Path()); err == nil {
-						a.statusMsg = "copied path"
+			case "Y":
+				if a.mode == ModeTree || a.mode == ModeSearch {
+					a.pendingKey = ""
+					if n := a.tree.CurrentNode(); n != nil {
+						if err := clipboard.Copy(n.Path()); err == nil {
+							a.statusMsg = "copied path"
+						}
 					}
+					return a, nil
 				}
-				return a, nil
-			}
 
-		case "S":
-			if a.mode == ModeTree || a.mode == ModeSearch {
-				a.pendingKey = ""
-				if n := a.tree.CurrentNode(); n != nil {
-					if err := clipboard.Copy(n.Schema()); err == nil {
-						a.statusMsg = "copied schema"
+			case "S":
+				if a.mode == ModeTree || a.mode == ModeSearch {
+					a.pendingKey = ""
+					if n := a.tree.CurrentNode(); n != nil {
+						if err := clipboard.Copy(n.Schema()); err == nil {
+							a.statusMsg = "copied schema"
+						}
 					}
+					return a, nil
 				}
-				return a, nil
-			}
 
-		case "L":
-			if a.mode == ModeTree || a.mode == ModeSearch {
-				a.pendingKey = ""
-				if n := a.tree.CurrentNode(); n != nil {
-					if err := clipboard.Copy(n.CompactYAML()); err == nil {
-						a.statusMsg = "copied llm format"
+			case "L":
+				if a.mode == ModeTree || a.mode == ModeSearch {
+					a.pendingKey = ""
+					if n := a.tree.CurrentNode(); n != nil {
+						if err := clipboard.Copy(n.CompactYAML()); err == nil {
+							a.statusMsg = "copied llm format"
+						}
 					}
+					return a, nil
+				}
+
+			case "r":
+				a.pendingKey = ""
+				if a.mode == ModeRaw {
+					a.mode = ModeTree
+				} else {
+					a.rawModel()
+					a.mode = ModeRaw
 				}
 				return a, nil
+
+			case "/":
+				a.pendingKey = ""
+				a.mode = ModeSearch
+				a.setTreeContentHeight()
+				return a, a.searchModel().Init()
+
+			case ":":
+				a.pendingKey = ""
+				a.mode = ModeFilter
+				return a, a.filterModel().Init()
 			}
-
-		case "r":
-			a.pendingKey = ""
-			if a.mode == ModeRaw {
-				a.mode = ModeTree
-			} else {
-				a.rawModel()
-				a.mode = ModeRaw
-			}
-			return a, nil
-
-		case "/":
-			a.pendingKey = ""
-			a.mode = ModeSearch
-			a.setTreeContentHeight()
-			return a, a.searchModel().Init()
-
-		case ":":
-			a.pendingKey = ""
-			a.mode = ModeFilter
-			return a, a.filterModel().Init()
 		}
 
 		// Route remaining keys to the active sub-model.
