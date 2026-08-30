@@ -4,10 +4,10 @@ import "testing"
 
 func TestContentHeight(t *testing.T) {
 	cases := []struct {
-		name        string
-		termHeight  int
-		chromeRows  int
-		want        int
+		name       string
+		termHeight int
+		chromeRows int
+		want       int
 	}{
 		{"status only", 24, 1, 23},
 		{"prompt and status", 24, 2, 22},
