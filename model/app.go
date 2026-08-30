@@ -104,7 +104,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		a.width, a.height = msg.Width, msg.Height
-		a.tree.Update(msg)
+		a.setTreeContentHeight()
 		a.graph.Update(msg)
 		// Nil-guarded, not routed through the lazy accessors: this handler
 		// runs before any key (Bubble Tea sends it on startup), and calling
@@ -113,9 +113,8 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if a.raw != nil {
 			a.raw.Update(msg)
 		}
-		if a.search != nil {
-			a.search.Update(msg)
-		}
+		// Search shares the tree; App owns its height. Do not forward
+		// WindowSize to search (it used to reset tree to Height-1).
 		if a.filter != nil {
 			a.filter.Update(msg)
 		}
@@ -152,6 +151,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.String() == "esc" && (a.mode == ModeSearch || a.mode == ModeFilter) {
 			a.tree.ClearHighlights()
 			a.mode = ModeTree
+			a.setTreeContentHeight()
 			a.pendingKey = ""
 			return a, nil
 		}
@@ -235,6 +235,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "/":
 			a.pendingKey = ""
 			a.mode = ModeSearch
+			a.setTreeContentHeight()
 			return a, a.searchModel().Init()
 
 		case ":":
@@ -285,6 +286,18 @@ func (a *App) toggleGraph() {
 	} else {
 		a.mode = ModeGraph
 	}
+}
+
+// setTreeContentHeight sizes the shared tree viewport for the current mode.
+// Only search stacks a prompt on the tree; other modes use status-only chrome.
+func (a *App) setTreeContentHeight() {
+	chrome := 1
+	if a.mode == ModeSearch {
+		chrome = chromeRows(ModeSearch)
+	}
+	a.tree.width = a.width
+	a.tree.height = contentHeight(a.height, chrome)
+	a.tree.clampOffset()
 }
 
 func (a *App) View() string {

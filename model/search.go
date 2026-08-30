@@ -106,8 +106,6 @@ func (m *SearchModel) Update(msg tea.Msg) (SubModel, tea.Cmd) {
 			m.recompute()
 			return m, cmd
 		}
-	case tea.WindowSizeMsg:
-		m.tree.Update(msg) //nolint
 	}
 	return m, nil
 }

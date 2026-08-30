@@ -29,7 +29,7 @@ func NewGraphModel(root *Node, width, height int) *GraphModel {
 		root:    root,
 		focused: root,
 		width:   width,
-		height:  height - 1,
+		height:  contentHeight(height, 1),
 	}
 }
 
@@ -39,7 +39,7 @@ func (m *GraphModel) Update(msg tea.Msg) (SubModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
-		m.height = msg.Height - 1
+		m.height = contentHeight(msg.Height, 1)
 	case tea.KeyMsg:
 		children := m.focusedChildren()
 		switch msg.String() {
